@@ -1,3 +1,4 @@
+from html import parser
 import os
 from os.path import join
 import torch
@@ -52,6 +53,14 @@ def parse_args():
     parser.add_argument("--aug_warm_up", type=int, default=5)
     parser.add_argument("--aug_gap", type=int, default=5)
 
+    # ---- VAT args (add these) ----
+    parser.add_argument('--enable_vat', type=int, default=0, help='Enable VAT (1) or not (0)')
+    parser.add_argument('--vat_coeff', type=float, default=1.0, help='Weight for VAT loss')
+    parser.add_argument('--vat_eps',   type=float, default=1.0, help='VAT epsilon (perturbation size)')
+    parser.add_argument('--vat_ip',    type=int,   default=1,   help='VAT power-iteration steps')
+    # ------------------------------
+
+
     return parser.parse_args()
 
 
@@ -75,7 +84,7 @@ if not os.path.exists(FILE_PATH):
 
 config = {
     "train_batch": args.trainbatch,
-    "n_layers": args.layer,
+    "n_layers": 1,
     "latent_dim_rec": args.recdim,
     "enable_dropout": args.enable_dropout,
     "keep_prob": args.keepprob,
@@ -99,6 +108,15 @@ config = {
     "aug_warm_up": args.aug_warm_up,
     "aug_gap": args.aug_gap,
     "ssm_temp": args.ssm_temp,
+    # --- VAT settings (all CPU-safe) ---
+    "enable_vat": bool(args.enable_vat),  # turn VAT on/off
+    "vat_eps": args.vat_eps,              # radius of adversarial perturbation
+    "vat_xi": 1e-6,                       # small finite-diff step for power-iteration
+    "vat_ip": args.vat_ip,                # power-iteration steps
+    "vat_coeff": args.vat_coeff,          # lambda for VAT loss term
+    "vat_temp": 1.0,                      # temperature on logits inside VAT
+
+
 }
 
 import os

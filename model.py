@@ -11,7 +11,7 @@ from torch import nn
 import torch.nn.functional as F
 import numpy as np
 from world import cprint
-
+DEVICE = torch.device("cpu")
 
 class BasicModel(nn.Module):
     def __init__(self, config: dict, dataset):
@@ -78,11 +78,12 @@ class LightGCN(BasicModel):
                 temp_graph = self.Graph
         else:
             temp_graph = self.Graph
-            L = torch.ones_like(self.Graph.values()).float().cuda()
+            L = torch.ones_like(self.Graph.values(), device=DEVICE).float()
 
-        g_droped = (
-            torch.sparse_coo_tensor(temp_graph.indices(), temp_graph.values() * L, temp_graph.size()).coalesce().cuda()
-        )
+        g_droped = torch.sparse_coo_tensor(
+            temp_graph.indices(), temp_graph.values() * L, temp_graph.size(), device=DEVICE
+        ).coalesce()
+
 
         if self.config["enable_dropout"] and self.training:
             print("droping")
@@ -114,10 +115,11 @@ class LightGCN(BasicModel):
             ):
                 self.dataset.aug_edges(self.embedding_user, self.embedding_item, ratio=self.config["aug_ratio"])
             edges, aug_edge_coe, aug_edge_coe2 = (
-                self.dataset.aug_res_edges.cuda(non_blocking=True),
-                self.dataset.aug_edge_coe.cuda(non_blocking=True),
-                self.dataset.aug_edge_coe2.cuda(non_blocking=True),
+                self.dataset.aug_res_edges.to(DEVICE, non_blocking=True),
+                self.dataset.aug_edge_coe.to(DEVICE, non_blocking=True),
+                self.dataset.aug_edge_coe2.to(DEVICE, non_blocking=True),
             )
+
             deg1 = self.graphdeg
         else:
             edges = self.dataset.edges()
@@ -139,12 +141,12 @@ class LightGCN(BasicModel):
             f_user, f_item = f0, f0
         else:
             if ENABLE_AUG_EDGE:
-                f0 = torch.ones_like(U, dtype=torch.float32).cuda()
+                f0 = torch.ones_like(U, dtype=torch.float32, device=DEVICE)
                 f0 = f0 * aug_edge_coe
                 f_aug_temp = f0 * aug_edge_coe2
                 f_user, f_item = f0, f0
             else:
-                f0 = torch.ones_like(U, dtype=torch.float32).cuda()
+                f0 = torch.ones_like(U, dtype=torch.float32, device=DEVICE)
                 f_user, f_item = f0, f0
 
         def cal_Ef(target, f):
@@ -156,10 +158,11 @@ class LightGCN(BasicModel):
                 idx = I_orig
                 deg = deg1[self.num_users :]
                 num = self.num_items
-            Ef = torch.zeros(num).cuda()
+            Ef = torch.zeros(num, device=DEVICE)
             Ef.scatter_add_(dim=0, index=idx, src=f)
             Ef = Ef / deg
-            Ef = torch.where(Ef == 0, torch.tensor(1.0), Ef)
+            Ef = torch.where(Ef == 0, torch.tensor(1.0, device=DEVICE), Ef)
+
             return Ef
 
         if ENABLE_AUG_EDGE:
@@ -195,7 +198,7 @@ class LightGCN(BasicModel):
             rating_list = []
             for i, items in enumerate(items_tensor):
                 user = users[i].long()
-                items = torch.tensor(items, dtype=torch.long).cuda()
+                items = torch.tensor(items, dtype=torch.long, device=DEVICE)
 
                 users_emb = all_users[user].unsqueeze(0)
                 items_emb = all_items[items]
@@ -218,6 +221,75 @@ class LightGCN(BasicModel):
 
         return users_emb, pos_emb, neg_users_emb, neg_emb, users_emb_ego, pos_emb_ego, neg_emb_ego
 
+    ## ********************* Changes made below FOR VAT integration *********************
+
+    def _raw_logits(self, users_emb: torch.Tensor, pos_emb: torch.Tensor, neg_emb_3d: torch.Tensor) -> torch.Tensor:
+        """
+        Build per-user logits over [pos, neg1..negK].
+        users_emb: [B, D]
+        pos_emb:   [B, D]
+        neg_emb_3d:[B, K, D]
+        Returns:   [B, 1+K]
+        """
+        B, D = users_emb.shape
+        K = neg_emb_3d.size(1)
+        # [B, 1]
+        pos_scores = (users_emb * pos_emb).sum(dim=1, keepdim=True)
+        # [B, K]
+        neg_scores = (users_emb.unsqueeze(1) * neg_emb_3d).sum(dim=2)
+        logits = torch.cat([pos_scores, neg_scores], dim=1)
+        # optional temperature for VAT
+        temp = float(self.config.get("vat_temp", 1.0))
+        if temp != 1.0:
+            logits = logits / temp
+        return logits
+
+    def _vat_kl(self, p_logit: torch.Tensor, q_logit: torch.Tensor) -> torch.Tensor:
+        """
+        KL(p || q) where p is fixed (detached), q is current.
+        """
+        p = torch.softmax(p_logit.detach(), dim=1)
+        log_q = torch.log_softmax(q_logit, dim=1)
+        return torch.nn.functional.kl_div(log_q, p, reduction="batchmean")
+
+    def _vat_loss(self, users_emb: torch.Tensor, pos_emb: torch.Tensor, neg_emb_3d: torch.Tensor) -> torch.Tensor:
+        """
+        Virtual Adversarial Training on user embeddings (E-VAT).
+        Keeps the model locally smooth around users_emb.
+        """
+        if not self.config.get("enable_vat", False):
+            return torch.tensor(0.0)
+
+        xi   = float(self.config.get("vat_xi", 1e-6))
+        eps  = float(self.config.get("vat_eps", 2.5))
+        n_it = int(self.config.get("vat_ip", 1))
+        lam  = float(self.config.get("vat_coeff", 1.0))
+
+        # baseline logits (no grad on the target distribution)
+        base_logits = self._raw_logits(users_emb, pos_emb, neg_emb_3d)
+
+        # init small random direction
+        d = torch.randn_like(users_emb)
+        d = torch.nn.functional.normalize(d, dim=1)
+        d = d * xi
+        d.requires_grad_(True)
+
+        # power iteration(s)
+        for _ in range(n_it):
+            y_hat = self._raw_logits(users_emb + d, pos_emb, neg_emb_3d)
+            kl = self._vat_kl(base_logits, y_hat)  # KL(p || q(x+d))
+            g = torch.autograd.grad(kl, d, retain_graph=True, create_graph=True)[0]
+            # update direction
+            d = torch.nn.functional.normalize(g.detach(), dim=1) * xi
+            d.requires_grad_(True)
+
+        # final adversarial direction
+        r_adv = torch.nn.functional.normalize(d.detach(), dim=1) * eps
+        y_hat_adv = self._raw_logits(users_emb + r_adv, pos_emb, neg_emb_3d)
+        vat_loss = self._vat_kl(base_logits, y_hat_adv)  # KL(p || q(x + r_adv))
+        return lam * vat_loss
+## ********************* Changes made above FOR VAT integration *********************
+
     def bprloss(self, users, pos, neg, epoch: int = None):
         neg_num = neg.shape[1]
         neg_users = users.view(-1, 1).repeat(1, neg_num).view(-1)
@@ -232,8 +304,17 @@ class LightGCN(BasicModel):
         )
         pos_scores = torch.mul(users_emb, pos_emb).sum(dim=1)
         neg_scores = torch.mul(neg_users_emb, neg_emb).sum(dim=1)
+        bpr = torch.mean(torch.nn.functional.softplus((neg_scores - pos_scores).div(self.config["tau"])))
+        loss = bpr + reg_loss * float(self.config.get("weight_decay", 0.0)) 
 
-        loss = torch.mean(torch.nn.functional.softplus((neg_scores - pos_scores).div(self.config["tau"])))
+        # ---- VAT (new) ----
+        if self.config.get("enable_vat", False):
+            # reshape neg_emb to [B, K, D]
+            B, D = users_emb.size()
+            K = neg_num
+            neg_emb_3d = neg_emb.view(B, K, D)
+            vat_loss = self._vat_loss(users_emb, pos_emb, neg_emb_3d)
+            loss = loss + vat_loss
 
         return loss, reg_loss
 

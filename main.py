@@ -13,9 +13,11 @@ import time
 import procedure
 from os.path import join
 from logger import CompleteLogger
+import torch
+DEVICE = torch.device("cpu")
 
-
-os.environ["CUDA_VISIBLE_DEVICES"] = world.config["cuda"]
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+DEVICE = torch.device("cpu")
 
 # ==============================
 utils.set_seed(world.seed)
@@ -25,6 +27,12 @@ print(">>SEED:", world.seed)
 import dataloader
 import model
 from pprint import pprint
+
+import os
+# ...
+SAVE_DIR = os.path.join(".", "checkpoints")
+os.makedirs(SAVE_DIR, exist_ok=True)
+
 
 dataroot = "./OOD_data/" + world.config["ood"] + "/" + world.dataset
 logroot = "./log/" + world.config["ood"] + "/" + world.dataset
@@ -47,7 +55,7 @@ print("===========end===================")
 
 MODELS = {"lgn": model.LightGCN, "mf": model.MF}
 
-Recmodel = MODELS[world.model_name](world.config, dataset).cuda()
+Recmodel = MODELS[world.model_name](world.config, dataset).to(DEVICE)
 bpr = utils.LossFunc(Recmodel, world.config)
 
 weight_file = utils.getFileName()
@@ -86,7 +94,11 @@ else:
 
 print("world.config")
 print(world.config)
-w.add_text("config", str(world.config), 0)
+if world.tensorboard:
+    w.add_text("config", str(world.config), 0)
+else:
+    print("not enable tensorboard")
+
 print("============================================")
 try:
     best_recall, best_ndcg, best_hit, best_precision = 0, 0, 0, 0
@@ -105,7 +117,7 @@ try:
 
             if test_ndcg > best_ndcg:
                 patience = 0
-                torch.save(Recmodel.state_dict(), os.path.join(save_dir, "best_model.pth"))
+                torch.save(Recmodel.state_dict(), os.path.join(SAVE_DIR, "best_model.pth"))
             else:
                 patience += 1
                 if patience >= 5:

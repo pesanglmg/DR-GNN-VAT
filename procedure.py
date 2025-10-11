@@ -11,6 +11,7 @@ from utils import timer
 import model
 import multiprocessing
 import pdb
+DEVICE = torch.device("cpu")
 
 
 CORES = multiprocessing.cpu_count() // 2
@@ -31,9 +32,10 @@ def BPR_train_original(dataset, recommend_model, loss_class, epoch, config, w=No
         users, posItems = utils.shuffle(users, posItems)
 
     if config["full_batch"]:
-        users = users.cuda(non_blocking=True)
-        posItems = posItems.cuda(non_blocking=True)
-        negItems = negItems.cuda(non_blocking=True)
+        users    = users.to(DEVICE, non_blocking=True)
+        posItems = posItems.to(DEVICE, non_blocking=True)
+        negItems = negItems.to(DEVICE, non_blocking=True)
+
 
         batch_size = len(users)
         aver_loss = loss.step(users, posItems, negItems, epoch)
@@ -45,11 +47,14 @@ def BPR_train_original(dataset, recommend_model, loss_class, epoch, config, w=No
         aver_loss = 0.0
 
         for batch_i, (batch_users, batch_pos) in enumerate(utils.minibatch(users, posItems, batch_size=batch_size)):
-            batch_users = batch_users.cuda(non_blocking=True)
-            batch_pos = batch_pos.cuda(non_blocking=True)
-            batch_not_interaction_tensor = (~dataset.interaction_tensor[batch_users]).float()
+            batch_users = batch_users.to(DEVICE, non_blocking=True)
+            batch_pos   = batch_pos.to(DEVICE, non_blocking=True)
+            batch_not_interaction_tensor = (~dataset.interaction_tensor[batch_users]).float().to(DEVICE)
 
-            batch_neg = torch.multinomial(batch_not_interaction_tensor, config["num_negtive_items"], replacement=True)
+            batch_neg = torch.multinomial(
+                batch_not_interaction_tensor, config["num_negtive_items"], replacement=True
+            ).to(DEVICE)
+
             cri = loss.step(batch_users, batch_pos, batch_neg, epoch, batch_i)
             aver_loss += cri
         aver_loss = aver_loss / total_batch
@@ -88,6 +93,13 @@ def Test(dataset, Recmodel, epoch, w=None, multicore=0):
     Recmodel = Recmodel.eval()
     max_K = max(world.topks)
 
+    # Precompute embeddings ONCE for testing (huge speedup on CPU)
+    with torch.no_grad():
+        all_users_emb, all_items_emb = Recmodel.computer()  # CPU tensors
+        all_items_T = all_items_emb.t()
+        act = Recmodel.f  # sigmoid
+
+
     if multicore == 1:
         pool = multiprocessing.Pool(CORES)
     results = {
@@ -107,9 +119,14 @@ def Test(dataset, Recmodel, epoch, w=None, multicore=0):
         for batch_users in utils.minibatch(users, batch_size=u_batch_size):
             allPos = dataset.getUserPosItems(batch_users)
             groundTrue = [testDict[u] for u in batch_users]
-            batch_users_gpu = torch.Tensor(batch_users).long().cuda()
+            batch_users_gpu = torch.tensor(batch_users, device=DEVICE).long()
 
-            rating = Recmodel.getUsersRating(batch_users_gpu)
+
+            users_emb = all_users_emb[batch_users_gpu.long()]
+            rating = act(users_emb @ all_items_T)
+            _, rating_K = torch.topk(rating, k=max_K)
+            rating_list.append(rating_K.cpu())
+
             exclude_index = []
             exclude_items = []
             for range_i, items in enumerate(allPos):

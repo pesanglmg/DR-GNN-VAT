@@ -17,13 +17,57 @@ import world
 from world import cprint
 from time import time
 import cppimport
-
+DEVICE = torch.device("cpu")  # force CPU
 
 class Loader(Dataset):
     """
     Dataset type for pytorch
-    Incldue graph information
+    Include graph information
     """
+    def getSparseGraph(self):
+        """
+        Build the normalized user–item adjacency matrix on CPU.
+        Sets:
+        - self.Graph  : sparse COO tensor (CPU)
+        - self.graphdeg: degree vector (CPU)
+        """
+        print("loading adjacency matrix")
+        DEVICE = torch.device("cpu")
+
+        # edges(): returns [2, E] tensor of (user, item)
+        edges = self.edges().cpu()
+        U = edges[0]
+        I = edges[1]
+        uI = I + self.n_users  # shift item ids
+
+        # Undirected bipartite graph indices
+        ind = torch.stack((torch.cat((U, uI)), torch.cat((uI, U))), dim=0)
+
+        # Unnormalized adjacency (values all 1s)
+        tempg = torch.sparse_coo_tensor(
+            ind,
+            torch.ones(ind.shape[1], device=DEVICE),
+            (self.n_users + self.m_items, self.n_users + self.m_items),
+            device=DEVICE,
+        ).coalesce()
+
+        # Degree and symmetric normalization
+        deg = torch.sparse.sum(tempg, dim=1).to_dense()
+        deg = torch.where(deg == 0, torch.tensor(1.0, device=DEVICE), deg)
+        muldeg = torch.pow(deg, -0.5)
+
+        val = tempg.values()
+        val = val * muldeg[ind[0]]
+        val = val * muldeg[ind[1]]
+
+        G = torch.sparse_coo_tensor(
+            ind, val, (self.n_users + self.m_items, self.n_users + self.m_items), device=DEVICE
+        ).coalesce()
+
+        self.Graph, self.graphdeg = G, deg
+        self.graphdeg_cpu = self.graphdeg.clone().cpu()
+        return True
+
 
     def __init__(self, config=world.config, path="./data/gowalla"):
         # train or test
@@ -56,7 +100,7 @@ class Loader(Dataset):
 
         self.getSparseGraph()
 
-        self.interaction_tensor = self.create_interaction_tensor().cuda()
+        self.interaction_tensor = self.create_interaction_tensor().to(DEVICE)
 
     def create_interaction_tensor(self):
         interaction_tensor = torch.zeros(self.n_user, self.m_item, dtype=torch.bool)
@@ -193,8 +237,9 @@ class Loader(Dataset):
 
     def edges(self):
         return torch.stack(
-            (torch.tensor(self.trainUser, device="cuda"), torch.tensor(self.trainItem, device="cuda")), dim=0
+            (torch.tensor(self.trainUser), torch.tensor(self.trainItem)), dim=0
         )
+
 
     def aug_edges(self, user_emb, item_emb, ratio=0.1):
         print("=====Aug_edges begin=====")
@@ -215,7 +260,7 @@ class Loader(Dataset):
 
         n = user_emb.size(0)
         sample_size = int(self.m_item * ratio)
-        indices = torch.randperm(self.m_item)[:sample_size].cuda()
+        indices = torch.randperm(self.m_item, device=DEVICE)[:sample_size]
         sampled_item_embeddings = item_emb[indices]
 
         nearest_distances = torch.full((n,), float("inf"), device=user_emb.device)
@@ -257,7 +302,10 @@ class Loader(Dataset):
         edge_coe2 = torch.tensor(edge_coe2)
 
         res_edges = torch.stack(
-            (torch.tensor(aug_train_User, device="cuda"), torch.tensor(aug_train_Item, device="cuda")), dim=0
+            (
+                torch.tensor(aug_train_User, device=DEVICE),
+                torch.tensor(aug_train_Item, device=DEVICE),
+            )
         )
         self.getAugSparseGraph(res_edges)
 
@@ -275,57 +323,33 @@ class Loader(Dataset):
         I = edges[1]
         uI = I + self.n_users
 
+        U = edges[0]; I = edges[1]; uI = I + self.n_users
+
         ind = torch.stack((torch.cat((U, uI)), torch.cat((uI, U))), dim=0)
+
         tempg = torch.sparse_coo_tensor(
-            ind, torch.ones(ind.shape[1], device="cuda"), (self.n_users + self.m_items, self.n_users + self.m_items)
+            ind, torch.ones(ind.shape[1], device=DEVICE),
+            (self.n_users + self.m_items, self.n_users + self.m_items),
+            device=DEVICE
         ).coalesce()
-        deg = torch.sparse.sum(tempg, dim=1).to_dense()
-        deg = torch.where(deg == 0, torch.tensor(1.0), deg)
+
+        deg = torch.sparse.sum(tempg, dim=1).to_dense().to(DEVICE)
+        deg = torch.where(deg == 0, torch.tensor(1.0, device=DEVICE), deg)
         muldeg = torch.pow(deg, -0.5)
 
         val = tempg.values()
         val = val * muldeg[ind[0]]
         val = val * muldeg[ind[1]]
 
-        deg = deg.cuda()
-        G = torch.sparse_coo_tensor(ind, val, (self.n_users + self.m_items, self.n_users + self.m_items))
-        G = G.coalesce().cuda()
-
-        self.aug_Graph, self.aug_graphdeg = G, deg
-
-    def sample_edges(self, num):
-        index = np.random.randint(0, self.traindataSize, num)
-        S = np.zeros((num, 2))
-        S[:, 0] = self.trainUser[index]
-        S[:, 1] = self.trainItem[index]
-        return S
-
-    def getSparseGraph(self):
-        print("loading adjacency matrix")
-        edges = self.edges().cpu()
-        U = edges[0]
-        I = edges[1]
-        uI = I + self.n_users
-
-        ind = torch.stack((torch.cat((U, uI)), torch.cat((uI, U))), dim=0)
-        tempg = torch.sparse_coo_tensor(
-            ind, torch.ones(ind.shape[1]), (self.n_users + self.m_items, self.n_users + self.m_items)
+        G = torch.sparse_coo_tensor(
+            ind, val, (self.n_users + self.m_items, self.n_users + self.m_items),
+            device=DEVICE
         ).coalesce()
-        deg = torch.sparse.sum(tempg, dim=1).to_dense()
-        deg = torch.where(deg == 0, torch.tensor(1.0), deg)
-        muldeg = torch.pow(deg, -0.5)
-
-        val = tempg.values()
-        val = val * muldeg[ind[0]]
-        val = val * muldeg[ind[1]]
-
-        deg = deg.cuda()
-        G = torch.sparse_coo_tensor(ind, val, (self.n_users + self.m_items, self.n_users + self.m_items))
-        G = G.coalesce().cuda()
 
         self.Graph, self.graphdeg = G, deg
-        self.graphdeg_cpu = self.graphdeg.clone().cpu()
+        self.graphdeg_cpu = self.graphdeg.clone().to("cpu")
         return True
+
 
     def getUserItemFeedback(self, users, items):
         return np.array(self.UserItemNet[users, items]).astype("uint8").reshape((-1,))
