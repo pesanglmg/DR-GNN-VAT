@@ -1,0 +1,33 @@
+# Python / env
+.venv/
+__pycache__/
+*.pyc
+
+# OS/IDE
+.vscode/
+.idea/
+
+# Build / logs
+dist/
+build/
+*.log
+
+# Data & artifacts
+data/
+OOD_data/
+*.csv
+*.tsv
+*.zip
+*.tar*
+*.gz
+*.npz
+
+# Models / checkpoints
+*.pt
+*.pth
+*.onnx
+
+# Native libs accidentally committed
+*.dll
+*.lib
+*.so
