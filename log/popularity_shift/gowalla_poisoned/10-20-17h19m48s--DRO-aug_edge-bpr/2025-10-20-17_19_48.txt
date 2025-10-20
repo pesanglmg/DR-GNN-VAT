@@ -1,0 +1,23 @@
+world.config
+{'train_batch': 2048, 'n_layers': 1, 'latent_dim_rec': 32, 'enable_dropout': 0, 'keep_prob': 0.6, 'test_u_batch_size': 2048, 'multicore': 0, 'loss': 'bpr', 'lr': 0.1, 'weight_decay': 1e-06, 'pretrain': 0, 'enable_DRO': 1, 'alpha': 0.1, 'tau': 1.0, 'norm_emb': 0, 'full_batch': True, 'num_negtive_items': 1, 'ood': 'popularity_shift', 'cuda': '0', 'aug_on': True, 'aug_ratio': 0.01, 'aug_coefficient': 0.1, 'aug_warm_up': 5, 'aug_gap': 5, 'ssm_temp': 0.1, 'enable_vat': False, 'vat_eps': 1.0, 'vat_xi': 1e-06, 'vat_ip': 1, 'vat_coeff': 1.0, 'vat_temp': 1.0}
+============================================
+[0;30;43m[TEST][0m
+{'precision': array([0.00015071]), 'recall': array([0.00042334]), 'ndcg': array([0.00028744]), 'hitratio': array([0.00041428])}
+EPOCH[1/10] Loss0.690-Time4.0448548793792725
+EPOCH[2/10] Loss0.665-Time2.152780771255493
+EPOCH[3/10] Loss0.582-Time1.8764889240264893
+EPOCH[4/10] Loss0.436-Time2.0686469078063965
+EPOCH[5/10] Loss0.281-Time2.002336025238037
+[0;30;43m[TEST][0m
+{'precision': array([0.00675363]), 'recall': array([0.01598662]), 'ndcg': array([0.01495011]), 'hitratio': array([0.01856455])}
+=====Aug_edges begin=====
+  0%|                                                                         | 0/15 [00:00<?, ?it/s] 47%|##############################3                                  | 7/15 [00:00<00:00, 61.77it/s] 93%|###########################################################7    | 14/15 [00:00<00:00, 62.45it/s]100%|################################################################| 15/15 [00:00<00:00, 63.48it/s]
+New add edges num:  30144
+Aug_edges time:  2.6885483264923096
+======Aug_edges done!======
+EPOCH[6/10] Loss0.171-Time4.6392364501953125
+EPOCH[7/10] Loss0.116-Time1.8591132164001465
+EPOCH[8/10] Loss0.094-Time1.8251464366912842
+EPOCH[9/10] Loss0.084-Time1.8377630710601807
+EPOCH[10/10] Loss0.080-Time1.8528552055358887
+best_hit: 0.018564550133031366, best_ndcg: 0.014950105757129002, best_precision: 0.006753633866970327, best_recall: 0.015986617899553312

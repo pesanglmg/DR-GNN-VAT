@@ -73,9 +73,15 @@ class LightGCN(BasicModel):
             L = torch.cat([L_user, L_item])
 
             if self.config["aug_on"] and self.training and epoch >= self.config["aug_warm_up"]:
-                temp_graph = self.dataset.aug_Graph
+                # use augmented graph if present, else fall back to normal graph
+                temp_graph = getattr(self.dataset, "aug_Graph", self.Graph)
             else:
                 temp_graph = self.Graph
+            vals = temp_graph.values()
+            if L.numel() != vals.numel():
+                # fallback: uniform weights for the augmented edges
+                L = torch.ones_like(vals, device=vals.device)
+                
         else:
             temp_graph = self.Graph
             L = torch.ones_like(self.Graph.values(), device=DEVICE).float()
@@ -159,6 +165,8 @@ class LightGCN(BasicModel):
                 deg = deg1[self.num_users :]
                 num = self.num_items
             Ef = torch.zeros(num, device=DEVICE)
+            idx = idx.to(torch.long).view(-1).contiguous()   
+            f = f.to(Ef.dtype).view(-1).contiguous()
             Ef.scatter_add_(dim=0, index=idx, src=f)
             Ef = Ef / deg
             Ef = torch.where(Ef == 0, torch.tensor(1.0, device=DEVICE), Ef)

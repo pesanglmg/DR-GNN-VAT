@@ -1,0 +1,30 @@
+world.config
+{'train_batch': 2048, 'n_layers': 1, 'latent_dim_rec': 32, 'enable_dropout': 0, 'keep_prob': 0.6, 'test_u_batch_size': 2048, 'multicore': 0, 'loss': 'bpr', 'lr': 0.1, 'weight_decay': 1e-06, 'pretrain': 0, 'enable_DRO': 1, 'alpha': 0.1, 'tau': 1.0, 'norm_emb': 0, 'full_batch': True, 'num_negtive_items': 1, 'ood': 'popularity_shift', 'cuda': '0', 'aug_on': True, 'aug_ratio': 0.01, 'aug_coefficient': 0.1, 'aug_warm_up': 5, 'aug_gap': 5, 'ssm_temp': 0.1, 'enable_vat': False, 'vat_eps': 1.0, 'vat_xi': 1e-06, 'vat_ip': 1, 'vat_coeff': 1.0, 'vat_temp': 1.0}
+============================================
+[0;30;43m[TEST][0m
+{'precision': array([0.00015071]), 'recall': array([0.00042334]), 'ndcg': array([0.00028744]), 'hitratio': array([0.00041428])}
+Traceback (most recent call last):
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\main.py", line 135, in <module>
+    output_information = procedure.BPR_train_original(dataset, Recmodel, bpr, epoch, world.config, w=w)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\procedure.py", line 41, in BPR_train_original
+    aver_loss = loss.step(users, posItems, negItems, epoch)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\utils.py", line 25, in step
+    loss, reg_loss = self.model.bprloss(users, pos, neg, epoch)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 297, in bprloss
+    (users_emb, pos_emb, neg_users_emb, neg_emb, userEmb0, posEmb0, negEmb0) = self.getEmbedding(
+                                                                               ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 212, in getEmbedding
+    all_users, all_items = self.computer(epoch, batch_i)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 72, in computer
+    L_user, L_item = self.computeL(F.normalize(all_emb, p=2, dim=1), epoch=epoch)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 172, in computeL
+    Ef_user = cal_Ef(target="user", f=f_user)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 162, in cal_Ef
+    Ef.scatter_add_(dim=0, index=idx, src=f)
+RuntimeError: scatter(): Expected dtype int64 for index

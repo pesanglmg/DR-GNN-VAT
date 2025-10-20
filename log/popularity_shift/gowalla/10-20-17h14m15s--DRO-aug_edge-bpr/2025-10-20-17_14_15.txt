@@ -1,0 +1,23 @@
+world.config
+{'train_batch': 2048, 'n_layers': 1, 'latent_dim_rec': 32, 'enable_dropout': 0, 'keep_prob': 0.6, 'test_u_batch_size': 2048, 'multicore': 0, 'loss': 'bpr', 'lr': 0.1, 'weight_decay': 1e-06, 'pretrain': 0, 'enable_DRO': 1, 'alpha': 0.1, 'tau': 1.0, 'norm_emb': 0, 'full_batch': True, 'num_negtive_items': 1, 'ood': 'popularity_shift', 'cuda': '0', 'aug_on': True, 'aug_ratio': 0.01, 'aug_coefficient': 0.1, 'aug_warm_up': 5, 'aug_gap': 5, 'ssm_temp': 0.1, 'enable_vat': False, 'vat_eps': 1.0, 'vat_xi': 1e-06, 'vat_ip': 1, 'vat_coeff': 1.0, 'vat_temp': 1.0}
+============================================
+[0;30;43m[TEST][0m
+{'precision': array([0.00019928]), 'recall': array([0.00057811]), 'ndcg': array([0.00038968]), 'hitratio': array([0.00054778])}
+EPOCH[1/10] Loss0.690-Time3.8719143867492676
+EPOCH[2/10] Loss0.666-Time3.7306320667266846
+EPOCH[3/10] Loss0.585-Time3.965752124786377
+EPOCH[4/10] Loss0.440-Time3.752746105194092
+EPOCH[5/10] Loss0.283-Time3.762897491455078
+[0;30;43m[TEST][0m
+{'precision': array([0.00695459]), 'recall': array([0.01711206]), 'ndcg': array([0.01564337]), 'hitratio': array([0.01911693])}
+=====Aug_edges begin=====
+  0%|                                                                         | 0/15 [00:00<?, ?it/s] 13%|########6                                                        | 2/15 [00:00<00:00, 16.48it/s] 33%|#####################6                                           | 5/15 [00:00<00:00, 19.38it/s] 53%|##################################6                              | 8/15 [00:00<00:00, 20.63it/s] 73%|##############################################9                 | 11/15 [00:00<00:00, 21.88it/s] 93%|###########################################################7    | 14/15 [00:00<00:00, 22.73it/s]100%|################################################################| 15/15 [00:00<00:00, 22.30it/s]
+New add edges num:  29845
+Aug_edges time:  5.038748264312744
+======Aug_edges done!======
+EPOCH[6/10] Loss0.169-Time9.211340427398682
+EPOCH[7/10] Loss0.113-Time4.038373708724976
+EPOCH[8/10] Loss0.090-Time3.965029716491699
+EPOCH[9/10] Loss0.080-Time4.08731484413147
+EPOCH[10/10] Loss0.075-Time4.084838628768921
+best_hit: 0.019116929507185534, best_ndcg: 0.015643368332571763, best_precision: 0.006954585035836292, best_recall: 0.01711205788778779

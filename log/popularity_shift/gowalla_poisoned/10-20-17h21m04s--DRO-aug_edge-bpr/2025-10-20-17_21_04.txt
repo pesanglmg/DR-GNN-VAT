@@ -1,0 +1,23 @@
+world.config
+{'train_batch': 2048, 'n_layers': 1, 'latent_dim_rec': 32, 'enable_dropout': 0, 'keep_prob': 0.6, 'test_u_batch_size': 2048, 'multicore': 0, 'loss': 'bpr', 'lr': 0.1, 'weight_decay': 1e-06, 'pretrain': 0, 'enable_DRO': 1, 'alpha': 0.1, 'tau': 1.0, 'norm_emb': 0, 'full_batch': True, 'num_negtive_items': 1, 'ood': 'popularity_shift', 'cuda': '0', 'aug_on': True, 'aug_ratio': 0.01, 'aug_coefficient': 0.1, 'aug_warm_up': 5, 'aug_gap': 5, 'ssm_temp': 0.1, 'enable_vat': True, 'vat_eps': 1.0, 'vat_xi': 1e-06, 'vat_ip': 1, 'vat_coeff': 0.1, 'vat_temp': 1.0}
+============================================
+[0;30;43m[TEST][0m
+{'precision': array([0.00015071]), 'recall': array([0.00042334]), 'ndcg': array([0.00028744]), 'hitratio': array([0.00041428])}
+EPOCH[1/10] Loss0.695-Time3.5785062313079834
+EPOCH[2/10] Loss0.681-Time3.317247152328491
+EPOCH[3/10] Loss0.613-Time3.2082202434539795
+EPOCH[4/10] Loss0.476-Time4.050347328186035
+EPOCH[5/10] Loss0.329-Time3.131430149078369
+[0;30;43m[TEST][0m
+{'precision': array([0.00695793]), 'recall': array([0.0167114]), 'ndcg': array([0.01551045]), 'hitratio': array([0.01912614])}
+=====Aug_edges begin=====
+  0%|                                                                         | 0/15 [00:00<?, ?it/s] 47%|##############################3                                  | 7/15 [00:00<00:00, 63.56it/s] 93%|###########################################################7    | 14/15 [00:00<00:00, 65.31it/s]100%|################################################################| 15/15 [00:00<00:00, 68.09it/s]
+New add edges num:  30144
+Aug_edges time:  2.64972186088562
+======Aug_edges done!======
+EPOCH[6/10] Loss0.227-Time6.002488374710083
+EPOCH[7/10] Loss0.178-Time3.158827304840088
+EPOCH[8/10] Loss0.154-Time3.1631064414978027
+EPOCH[9/10] Loss0.142-Time3.155848741531372
+EPOCH[10/10] Loss0.136-Time3.1490986347198486
+best_hit: 0.019126135830088105, best_ndcg: 0.015510450378313265, best_precision: 0.006957934221984057, best_recall: 0.016711397424021453

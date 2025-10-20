@@ -1,0 +1,37 @@
+world.config
+{'train_batch': 2048, 'n_layers': 1, 'latent_dim_rec': 32, 'enable_dropout': 0, 'keep_prob': 0.6, 'test_u_batch_size': 2048, 'multicore': 0, 'loss': 'bpr', 'lr': 0.1, 'weight_decay': 1e-06, 'pretrain': 0, 'enable_DRO': 1, 'alpha': 0.1, 'tau': 1.0, 'norm_emb': 0, 'full_batch': True, 'num_negtive_items': 1, 'ood': 'popularity_shift', 'cuda': '0', 'aug_on': True, 'aug_ratio': 0.01, 'aug_coefficient': 0.1, 'aug_warm_up': 5, 'aug_gap': 5, 'ssm_temp': 0.1, 'enable_vat': False, 'vat_eps': 1.0, 'vat_xi': 1e-06, 'vat_ip': 1, 'vat_coeff': 1.0, 'vat_temp': 1.0}
+============================================
+[0;30;43m[TEST][0m
+{'precision': array([0.00019928]), 'recall': array([0.00057811]), 'ndcg': array([0.00038968]), 'hitratio': array([0.00054778])}
+EPOCH[1/10] Loss0.690-Time3.863736152648926
+EPOCH[2/10] Loss0.666-Time3.6707522869110107
+EPOCH[3/10] Loss0.586-Time3.754340648651123
+EPOCH[4/10] Loss0.441-Time3.705076217651367
+EPOCH[5/10] Loss0.283-Time3.9277939796447754
+[0;30;43m[TEST][0m
+{'precision': array([0.00697803]), 'recall': array([0.0170121]), 'ndcg': array([0.01569146]), 'hitratio': array([0.01918137])}
+=====Aug_edges begin=====
+  0%|                                                                         | 0/15 [00:00<?, ?it/s] 20%|#############                                                    | 3/15 [00:00<00:00, 22.01it/s] 40%|##########################                                       | 6/15 [00:00<00:00, 24.18it/s] 60%|#######################################                          | 9/15 [00:00<00:00, 25.75it/s] 80%|###################################################2            | 12/15 [00:00<00:00, 26.43it/s]100%|################################################################| 15/15 [00:00<00:00, 26.44it/s]
+New add edges num:  29845
+Aug_edges time:  5.08968710899353
+======Aug_edges done!======
+Traceback (most recent call last):
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\main.py", line 135, in <module>
+    output_information = procedure.BPR_train_original(dataset, Recmodel, bpr, epoch, world.config, w=w)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\procedure.py", line 41, in BPR_train_original
+    aver_loss = loss.step(users, posItems, negItems, epoch)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\utils.py", line 25, in step
+    loss, reg_loss = self.model.bprloss(users, pos, neg, epoch)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 301, in bprloss
+    (users_emb, pos_emb, neg_users_emb, neg_emb, userEmb0, posEmb0, negEmb0) = self.getEmbedding(
+                                                                               ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 216, in getEmbedding
+    all_users, all_items = self.computer(epoch, batch_i)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\OneDrive\Documents\DR-GNN + VAT\DR-GNN-VAT\model.py", line 86, in computer
+    temp_graph.indices(), temp_graph.values() * L, temp_graph.size(), device=DEVICE
+                          ~~~~~~~~~~~~~~~~~~~~^~~
+RuntimeError: The size of tensor a (1620256) must match the size of tensor b (1679946) at non-singleton dimension 0
