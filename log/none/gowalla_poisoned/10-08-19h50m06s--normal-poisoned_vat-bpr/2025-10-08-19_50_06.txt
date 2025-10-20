@@ -1,5 +1,0 @@
-world.config
-{'train_batch': 256, 'n_layers': 1, 'latent_dim_rec': 32, 'enable_dropout': 0, 'keep_prob': 0.6, 'test_u_batch_size': 256, 'multicore': 0, 'loss': 'bpr', 'lr': 0.1, 'weight_decay': 1e-06, 'pretrain': 0, 'enable_DRO': 0, 'alpha': 0.1, 'tau': 1.0, 'norm_emb': 0, 'full_batch': False, 'num_negtive_items': 1, 'ood': 'none', 'cuda': '0', 'aug_on': False, 'aug_ratio': 0.01, 'aug_coefficient': 0.1, 'aug_warm_up': 5, 'aug_gap': 5, 'ssm_temp': 0.1, 'enable_vat': True, 'vat_eps': 4.0, 'vat_xi': 1e-06, 'vat_ip': 1, 'vat_coeff': 5.0, 'vat_temp': 1.0}
-============================================
-[0;30;43m[TEST][0m
-{'precision': array([0.00013062]), 'recall': array([0.00030556]), 'ndcg': array([0.0002585]), 'hitratio': array([0.00035905])}

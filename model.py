@@ -307,14 +307,71 @@ class LightGCN(BasicModel):
         bpr = torch.mean(torch.nn.functional.softplus((neg_scores - pos_scores).div(self.config["tau"])))
         loss = bpr + reg_loss * float(self.config.get("weight_decay", 0.0)) 
 
-        # ---- VAT (new) ----
-        if self.config.get("enable_vat", False):
-            # reshape neg_emb to [B, K, D]
-            B, D = users_emb.size()
-            K = neg_num
-            neg_emb_3d = neg_emb.view(B, K, D)
-            vat_loss = self._vat_loss(users_emb, pos_emb, neg_emb_3d)
-            loss = loss + vat_loss
+       # ------------------- VAT regularization (CPU-safe) -------------------
+        if self.config.get("enable_vat", False) and self.training:
+            vat_eps   = float(self.config.get("vat_eps",   4.0))   # radius
+            vat_xi    = float(self.config.get("vat_xi",    1e-6))  # tiny step for power-iter
+            vat_ip    = int(self.config.get("vat_ip",      1))     # power-iter steps
+            vat_temp  = float(self.config.get("vat_temp",  1.0))   # temperature on logits
+            vat_coeff = float(self.config.get("vat_coeff", 5.0))   # lambda for VAT term
+
+            # two-class logits (pos vs. neg) for each training triple
+            def two_class_logits(ps, ns, T=1.0):
+                return torch.stack([ps, ns], dim=1) / T
+
+            # p(y|x): original (clean) logits
+            with torch.no_grad():
+                p_clean = two_class_logits(pos_scores, neg_scores, vat_temp)
+
+            # initialize tiny noise on user/pos/neg embeddings
+            ru = torch.randn_like(users_emb)
+            rp = torch.randn_like(pos_emb)
+            rn = torch.randn_like(neg_emb)
+            ru = vat_xi * torch.nn.functional.normalize(ru, dim=1)
+            rp = vat_xi * torch.nn.functional.normalize(rp, dim=1)
+            rn = vat_xi * torch.nn.functional.normalize(rn, dim=1)
+
+            # power iteration to approximate adversarial direction
+            for _ in range(vat_ip):
+                ru.requires_grad_()
+                rp.requires_grad_()
+                rn.requires_grad_()
+
+                ps = ((users_emb + ru) * (pos_emb + rp)).sum(dim=1)
+                ns = ((users_emb + ru) * (neg_emb + rn)).sum(dim=1)
+                q_noisy = two_class_logits(ps, ns, vat_temp)
+
+                # KL(p||q) with log-target to be numerically stable
+                kl = torch.nn.functional.kl_div(
+                    torch.nn.functional.log_softmax(p_clean, dim=1),
+                    torch.nn.functional.log_softmax(q_noisy, dim=1),
+                    log_target=True, reduction="batchmean"
+                )
+
+                gu, gp, gn = torch.autograd.grad(kl, [ru, rp, rn], retain_graph=True)
+                ru = vat_xi * torch.nn.functional.normalize(gu.detach(), dim=1)
+                rp = vat_xi * torch.nn.functional.normalize(gp.detach(), dim=1)
+                rn = vat_xi * torch.nn.functional.normalize(gn.detach(), dim=1)
+
+            # final adversarial perturbation with radius eps
+            ru = vat_eps * torch.nn.functional.normalize(ru, dim=1)
+            rp = vat_eps * torch.nn.functional.normalize(rp, dim=1)
+            rn = vat_eps * torch.nn.functional.normalize(rn, dim=1)
+
+            # logits under adversarial perturbation
+            ps_adv = ((users_emb + ru) * (pos_emb + rp)).sum(dim=1)
+            ns_adv = ((users_emb + ru) * (neg_emb + rn)).sum(dim=1)
+            q_adv = two_class_logits(ps_adv, ns_adv, vat_temp)
+
+            vat_loss = torch.nn.functional.kl_div(
+                torch.nn.functional.log_softmax(p_clean, dim=1),
+                torch.nn.functional.log_softmax(q_adv,   dim=1),
+                log_target=True, reduction="batchmean"
+            )
+
+            # add VAT to the training objective
+            loss = loss + vat_coeff * vat_loss
+        # ---------------------------------------------------------------------
 
         return loss, reg_loss
 

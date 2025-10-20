@@ -1,0 +1,12 @@
+>>SEED: 2025
+[0;30;43mloading [./OOD_data/none/gowalla_poisoned][0m
+Traceback (most recent call last):
+  File "C:\Users\tmgpe\DR-GNN\main.py", line 40, in <module>
+    dataset = dataloader.Loader(path=dataroot)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tmgpe\DR-GNN\dataloader.py", line 79, in __init__
+    self.read_data(path)
+  File "C:\Users\tmgpe\DR-GNN\dataloader.py", line 136, in read_data
+    with open(train_file) as f:
+         ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: './OOD_data/none/gowalla_poisoned/train.txt'

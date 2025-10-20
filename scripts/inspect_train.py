@@ -51,3 +51,4 @@ if __name__ == "__main__":
     parser.add_argument("--topk", type=int, default=30)
     args = parser.parse_args()
     inspect(args.path, topk=args.topk)
+
