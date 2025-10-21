@@ -1,3 +1,10 @@
+# ------------------------------------------------------------------------------
+#  DR-GNN + VAT (Robust Graph Recommendation)
+#  Modified from original DR-GNN repository by Wenyuer and collaborators.
+#  Added Virtual Adversarial Training (VAT) and data poisoning experiments.
+#  Reference: https://github.com/WANGBohaO-jpg/DR-GNN.git 
+# ------------------------------------------------------------------------------
+
 """
 Design training and test process
 """
