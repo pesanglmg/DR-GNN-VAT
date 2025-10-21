@@ -4,6 +4,7 @@
     This project extends the Distributionally Robust Graph Neural Network (DR-GNN) by integrating Virtual Adversarial Training (VAT) to improve robustness against data poisoning and distributional shifts in recommender systems.
 
 ******************************* Overview ***************************************
+    
     Traditional recommender systems can become unstable when user behaviour changes or when malicious users inject fake data (poisoning attacks).
     This work combines two defence mechanisms:
 
